@@ -1,0 +1,1198 @@
+package com.nikomedia.lordofmoney
+
+//ⓒ2019 Pietraszczyk - copyright all rights reserved
+//mail: eNiko@wp.pl
+
+import android.content.Intent
+import android.content.res.Resources
+import android.net.Uri
+import android.support.v7.app.AppCompatActivity
+import android.os.Bundle
+import android.view.View
+import android.view.WindowManager
+import kotlin.random.Random
+import android.os.Handler
+import android.view.Window
+import android.widget.*
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import java.io.*
+import java.util.*
+
+
+class GameView : AppCompatActivity() {
+
+    lateinit var mAdView: AdView
+
+    private var whoPlay: Int = 1 //zmienna wskazująca który gracz gra
+    private val wherPlayer = arrayOf(0, 0, 0) //miejsce docelowe gracza
+    private var wherPlayerNow: Int = 0 //miejsce obecne gracza
+    private var cubeUnlock: Boolean = true //zmienna blokująca rzut kostką
+    private var cubeNumber: Int = 0 //zmienna wskazująca ile jest pól do przejścia
+    private var playerScore: String = "1000" //zmienna wskazująca stan konta gracza
+    private var compScore: String = "1000" //zmienna wskazująca stan konta komputera
+    private var viewCubeNumber: String = "0" //zmienna przedstawiająca wylosowany numer
+    private var menu:Boolean = false //stan widoczności menu w grze
+    private var allValue: Int = 0 //całkowita wartość majątku gracza
+    private var compValue: Int = 0 //całkowita wartość majątku compa
+    private var cubeAll: Int = 0 //zlicza ile razy rzucono kostką
+    private val widthMax = Resources.getSystem().displayMetrics.widthPixels
+    private val playerGoArray = intArrayOf(R.drawable.playergoone, R.drawable.playergotwo, R.drawable.playergoone, R.drawable.playergothree, R.drawable.playergoone)
+    private val playerStayArray = intArrayOf(R.drawable.playerstayone, R.drawable.playerstaytwo, R.drawable.playerstayone, R.drawable.playerstaythree, R.drawable.playerstayone)
+    private val compGoArray = intArrayOf(R.drawable.compgoone, R.drawable.compgotwo, R.drawable.compgoone, R.drawable.compgothree, R.drawable.compgoone)
+    private val compStayArray = intArrayOf(R.drawable.compstayone, R.drawable.compstaytwo, R.drawable.compstayone, R.drawable.compstaythree, R.drawable.compstayone)
+    private var buildingArray = intArrayOf(R.drawable.bank, R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0,
+        R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0,
+        R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0,
+        R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0, R.drawable.building0)
+    private val cloudNowArray = intArrayOf(R.drawable.cloud1, R.drawable.cloud1, R.drawable.cloud2, R.drawable.cloud3, R.drawable.cloud4)
+
+    private var np: Int = 0 //zmienna wskazująca grafikę do wyświetlenia
+    private var npr: Int = 0 //zmienna wskazująca grafikę do wyświetlenia
+    private var newWidth:Int = 0 //zmienna deklarująca nowe położenie budynku podczas animacji
+    private var endArea:Int = 15 //zmienna odliczająca do końca animacji przy zmianie pola
+
+    //właściwości budynków
+
+
+    private var building0 = Building(1, 0, 3, 100)
+    private var building1 = Building(2, 0, 0, 100)
+    private var building2 = Building(3, 0, 0, 100)
+    private var building3 = Building(4, 0, 0, 100)
+    private var building4 = Building(5, 0, 0, 100)
+    private var building5 = Building(6, 0, 0, 100)
+    private var building6 = Building(7, 0, 0, 100)
+    private var building7 = Building(8, 0, 0, 100)
+    private var building8 = Building(9, 0, 0, 100)
+    private var building9 = Building(10, 0, 0, 100)
+    private var building10 = Building(11, 0, 0, 100)
+    private var building11 = Building(12, 0, 0, 100)
+    private var building12 = Building(13, 0, 0, 100)
+    private var building13 = Building(14, 0, 0, 100)
+    private var building14 = Building(15, 0, 0, 100)
+    private var building15 = Building(16, 0, 0, 100)
+    private var building16 = Building(17, 0, 0, 100)
+    private var building17 = Building(18, 0, 0, 100)
+    private var building18 = Building(19, 0, 0, 100)
+    private var building19 = Building(20, 0, 0, 100)
+    private var building20 = Building(1, 0, 0, 100)
+
+    private val player = Player(1, "YOU", 1000, true, 0)
+    private val comp = Player(2, "QOMP", 1000, false, 0)
+
+    private val buildings = arrayOf(building0, building1, building2, building3, building4, building5, building6, building7, building8,
+        building9, building10, building11, building12, building13, building14, building15, building16, building17,
+        building18, building19, building20
+    )
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        super.onCreate(savedInstanceState)
+        this.window
+        .setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        setContentView(R.layout.game_view)
+
+        // Sample AdMob app ID: ca-app-pub-3940256099942544~3347511713
+        // ca-app-pub-3940256099942544/6300978111
+
+        MobileAds.initialize(this, "ca-app-pub-6473254572102146~3537713504")
+
+        mAdView = findViewById(R.id.adView)
+        val adRequest = AdRequest.Builder().build()
+        mAdView.loadAd(adRequest)
+
+        val skyView = findViewById<FrameLayout>(R.id.skyLayout)
+        val buildingLayout1 = findViewById<FrameLayout>(R.id.nextBuildingLayout)
+        val buildingLayout2 = findViewById<FrameLayout>(R.id.buildingLayout)
+        val playerLayout = findViewById<FrameLayout>(R.id.playerLayout)
+        val playerScoreView = findViewById<TextView>(R.id.playerScore)
+        val compScoreView = findViewById<TextView>(R.id.compScore)
+        val cubeNumberView = findViewById<TextView>(R.id.cubeNumber)
+        val cubeButtonClick = findViewById<ImageButton>(R.id.cubeButton)
+        val playButtonClick = findViewById<ImageButton>(R.id.playButton)
+        val playButtonView = findViewById<TextView>(R.id.playB)
+        val playLayout = findViewById<RelativeLayout>(R.id.intro)
+        val facebookButtonClick = findViewById<ImageButton>(R.id.facebookButton)
+        val youtubeButtonClick = findViewById<ImageButton>(R.id.youtubeButton)
+        val privacyPolicyClick = findViewById<ImageButton>(R.id.ppButton)
+        val endCashView = findViewById<ImageView>(R.id.cashyou)
+        val endTrashView = findViewById<ImageView>(R.id.trashyou)
+        val cloudView = findViewById<FrameLayout>(R.id.cloudLayout)
+        val cloudTwoView = findViewById<FrameLayout>(R.id.cloudLayout)
+        val winView = findViewById<TextView>(R.id.textwin)
+        val lostView = findViewById<TextView>(R.id.textlost)
+        val acmeValueView = findViewById<TextView>(R.id.acmeValue)
+        val cashAcmeView = findViewById<TextView>(R.id.cashAcme)
+        val endGameView = findViewById<RelativeLayout>(R.id.endGame)
+        val buyButtonClick = findViewById<ImageButton>(R.id.buyButton)
+        val buyButtonView = findViewById<TextView>(R.id.buyB)
+        val nextButtonClick = findViewById<ImageButton>(R.id.nextButton)
+        val nextButtonView = findViewById<TextView>(R.id.nextB)
+        val saleButtonClick = findViewById<ImageButton>(R.id.saleButton)
+        val saleButtonView = findViewById<TextView>(R.id.saleB)
+        val buildButtonClick = findViewById<ImageButton>(R.id.buildButton)
+        val buildButtonView = findViewById<TextView>(R.id.buildingB)
+        val payButtonClick = findViewById<ImageButton>(R.id.payButton)
+        val payButtonView = findViewById<TextView>(R.id.payB)
+
+        //FUNKCJA TWORZENIA NIEBA
+
+        fun sky() {
+            //ustalanie wysokości ekranu
+            val heightMax: Int = Resources.getSystem().displayMetrics.heightPixels
+            //ustalanie szerokości ekranu
+            val widthMax: Int = Resources.getSystem().displayMetrics.widthPixels
+            //podział wysokości ekranu przez wysokość pliku tła - ustalenie wierszy tabeli
+            val maxH: Int = (heightMax / 96) + 1
+            //podział szerokości ekranu przez szerokośc pliku tła - ustalenie kolumn tabeli
+            val maxW: Int = (widthMax / 200) + 1
+            //ustalenie ilośći powturzeń pętli
+            val maxR: Int = maxH * maxW
+
+            var heightSky = 0f
+            var widthSky = 0f
+
+            var m = 0
+            var n= 0
+
+            while (m < maxR) {
+
+                val imageSky = ImageView(this)
+                imageSky.setImageResource(R.drawable.sky)
+                skyView.addView(imageSky)
+                imageSky.visibility = View.VISIBLE
+
+                //wypełnianie kolumny tła
+                if (n < maxH) {
+                    imageSky.x = widthSky
+                    imageSky.y = heightSky
+                    //ustalenie rozmiaru importowanej grafiki
+                    imageSky.layoutParams.height = 96
+                    imageSky.layoutParams.width = 200
+                    heightSky += 96
+                    n++
+                    m++
+                }
+                //rozpoczęcie wypełnianie następnej kolumny tła
+                else if (n == maxH) {
+                    imageSky.x = widthSky
+                    imageSky.y = heightSky
+                    //ustalenie rozmiaru importowanej grafiki
+                    imageSky.layoutParams.height = 96
+                    imageSky.layoutParams.width = 200
+                    widthSky += 200f
+                    n = 0
+                    heightSky = 0f
+                }
+            }
+        }
+        sky()
+        //funkcja tworzenia chmur
+        fun cloud() {
+
+            //losowe ustalanie kształtu pierwszej chmury
+            val n:Int  = Random.nextInt(1, 4)
+            //losowe ustalanie rozmiaru drugiej chmury
+            val m:Int = Random.nextInt(1, 4)
+            //losowe ustalanie wysokości pojawienia się pierwszej chmury
+            val heightCloud = Random.nextInt(1, 400).toFloat()
+            //losowe ustalenie pojawienia się drugiej chmury
+            val nextHeight = Random.nextInt(1, 400).toFloat()
+            //wyznaczenie miejsca pojawienia się pierwszej chmury poza ekranem
+            var widthCloud = Resources.getSystem().displayMetrics.widthPixels.toFloat()
+            //wyznaczenie miejsca pojawienia się drugiej chmury poza ekranem
+            var nextCloud = widthCloud + (Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
+
+            //funkcja ruchu chmur
+            fun runCloud() {
+
+                val cloudOne = ImageView(this)
+                val cloudTwo = ImageView(this)
+                //pobieranie grafiki chmur według losowania
+                cloudOne.setImageResource(cloudNowArray[n])
+                cloudTwo.setImageResource(cloudNowArray[m])
+                cloudView.addView(cloudOne)
+                cloudTwoView.addView(cloudTwo)
+
+                if (nextCloud > -201) {
+
+                    cloudOne.y = heightCloud
+                    cloudOne.x = widthCloud
+                    cloudOne.layoutParams.height = 200
+                    cloudOne.layoutParams.width = 200
+                    cloudOne.visibility = View.VISIBLE
+                    cloudTwo.y = nextHeight
+                    cloudTwo.x = nextCloud
+                    cloudTwo.layoutParams.height = 200
+                    cloudTwo.layoutParams.width = 200
+                    cloudTwo.visibility = View.VISIBLE
+
+                    Handler().postDelayed({
+                        cloudOne.visibility = View.INVISIBLE
+                        cloudTwo.visibility = View.INVISIBLE
+                        widthCloud--
+                        nextCloud--
+                        runCloud()
+                    }, 50)
+                }
+                //nasłuch czy chmury wyszły poza ekran
+                else if (nextCloud < -200) {
+                    cloudOne.visibility = View.INVISIBLE
+                    cloudTwo.visibility = View.INVISIBLE
+                    cloud()
+                }
+            }
+            runCloud()
+        }
+        cloud()
+
+        //KONIEC FUNKCJI TWORZENIA NIEBA
+        //FUNKCJA MENU
+        fun menu() {
+            val n: Int = this.wherPlayer[this.whoPlay]
+
+            //sprawdzenie czy gra player
+            if (this.whoPlay == 1 && this.menu) {
+                //sprawdzenie czy teren jest wolny
+                if (this.buildings[n].owner == 0) {
+
+                    buyButtonClick.visibility = View.VISIBLE
+                    buyButtonView.visibility = View.VISIBLE
+                    buyButtonClick.setOnClickListener {
+
+                        buyButtonClick.visibility = View.INVISIBLE
+                        buyButtonView.visibility = View.INVISIBLE
+                        nextButtonClick.visibility = View.INVISIBLE
+                        nextButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        buyArea()
+
+                        playerScoreView.text = this.playerScore
+                        compScoreView.text = this.compScore
+
+                    }
+
+                    nextButtonClick.visibility = View.VISIBLE
+                    nextButtonView.visibility = View.VISIBLE
+                    nextButtonClick.setOnClickListener {
+                        //playerScoreView.text = this.playerScore
+                        //compScoreView.text = this.compScore
+
+                        nextButtonClick.visibility = View.INVISIBLE
+                        nextButtonView.visibility = View.INVISIBLE
+                        buyButtonClick.visibility = View.INVISIBLE
+                        buyButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        this.nextPlayer()
+
+                    }
+                }
+                //sprawdzenie czy teren należy do playera
+                else if (this.buildings[n].owner == 1 && this.buildings[n].level < 2) {
+
+                    buildButtonClick.visibility = View.VISIBLE
+                    buildButtonView.visibility = View.VISIBLE
+                    buildButtonClick.setOnClickListener {
+                        buildButtonClick.visibility = View.INVISIBLE
+                        buildButtonView.visibility = View.INVISIBLE
+                        saleButtonClick.visibility = View.INVISIBLE
+                        saleButtonView.visibility = View.INVISIBLE
+                        nextButtonClick.visibility = View.INVISIBLE
+                        nextButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        buildLevel()
+                        playerScoreView.text = this.playerScore
+                        compScoreView.text = this.compScore
+
+                    }
+
+                    saleButtonClick.visibility = View.VISIBLE
+                    saleButtonView.visibility = View.VISIBLE
+                    saleButtonClick.setOnClickListener {
+                        saleButtonClick.visibility = View.INVISIBLE
+                        saleButtonView.visibility = View.INVISIBLE
+                        nextButtonClick.visibility = View.INVISIBLE
+                        nextButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        sale()
+                        playerScoreView.text = this.playerScore
+                        compScoreView.text = this.compScore
+
+                    }
+
+                    nextButtonClick.visibility = View.VISIBLE
+                    nextButtonView.visibility = View.VISIBLE
+                    nextButtonClick.setOnClickListener {
+                        playerScoreView.text = this.playerScore
+                        compScoreView.text = this.compScore
+
+                        buildButtonClick.visibility = View.INVISIBLE
+                        buildButtonView.visibility = View.INVISIBLE
+                        saleButtonClick.visibility = View.INVISIBLE
+                        saleButtonView.visibility = View.INVISIBLE
+                        nextButtonClick.visibility = View.INVISIBLE
+                        nextButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        this.nextPlayer()
+
+                    }
+                }
+                else if (this.buildings[n].owner == 1 && this.buildings[n].level == 2) {
+
+                    saleButtonClick.visibility = View.VISIBLE
+                    saleButtonView.visibility = View.VISIBLE
+                    saleButtonClick.setOnClickListener {
+                        saleButtonClick.visibility = View.INVISIBLE
+                        saleButtonView.visibility = View.INVISIBLE
+                        nextButtonClick.visibility = View.INVISIBLE
+                        nextButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        sale()
+                        playerScoreView.text = this.playerScore
+                        compScoreView.text = this.compScore
+
+                    }
+
+                    nextButtonClick.visibility = View.VISIBLE
+                    nextButtonView.visibility = View.VISIBLE
+                    nextButtonClick.setOnClickListener {
+                        playerScoreView.text = this.playerScore
+                        compScoreView.text = this.compScore
+
+                        saleButtonClick.visibility = View.INVISIBLE
+                        saleButtonView.visibility = View.INVISIBLE
+                        nextButtonClick.visibility = View.INVISIBLE
+                        nextButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        this.nextPlayer()
+
+                    }
+                }
+                else if (this.buildings[n].owner == 2) {
+
+                    payButtonClick.visibility = View.VISIBLE
+                    payButtonView.visibility = View.VISIBLE
+                    payButtonClick.setOnClickListener {
+                        payButtonClick.visibility = View.INVISIBLE
+                        payButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        pay()
+                        playerScoreView.text = this.playerScore
+                        compScoreView.text = this.compScore
+
+                    }
+                }
+                else if (this.buildings[n].owner == 3) {
+                    //bank()
+
+                    nextButtonClick.visibility = View.VISIBLE
+                    nextButtonView.visibility = View.VISIBLE
+                    nextButtonClick.setOnClickListener {
+                        playerScoreView.text = this.playerScore
+                        compScoreView.text = this.compScore
+
+                        nextButtonClick.visibility = View.INVISIBLE
+                        nextButtonView.visibility = View.INVISIBLE
+
+                        this.menu = false
+                        this.nextPlayer()
+
+                    }
+                }
+            }
+        }
+
+        //FUNKCJA GRY
+        fun gameRun(play: Boolean) {
+
+            this.wherPlayerNow = wherPlayer[whoPlay]
+            whatBuildingNow()
+
+            fun playerRun() {
+
+                val heightPlayer = Resources.getSystem().displayMetrics.heightPixels.toFloat() - 300
+                val widthPlayer = (Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2) - 150
+                val sizeImage = (Resources.getSystem().displayMetrics.widthPixels / 2.4)
+
+                fun playerGo() {
+
+
+                    fun goRun() {
+
+                        val imageViewPlayerGo = ImageView(this)
+
+                        when(whoPlay) {
+                            1 -> imageViewPlayerGo.setImageResource(this.playerGoArray[np])
+                            2 -> {
+                                imageViewPlayerGo.setImageResource(this.compGoArray[np])
+                                cubeNumberView.text = this.cubeNumber.toString()
+                            }
+                        }
+
+                        playerLayout.addView(imageViewPlayerGo)
+                        imageViewPlayerGo.visibility = View.VISIBLE
+                        //ustalenie miejsca pojawienia się grafiki
+                        imageViewPlayerGo.x = widthPlayer
+                        imageViewPlayerGo.y = heightPlayer
+                        //ustalenie rozmiaru importowanej grafiki
+                        imageViewPlayerGo.layoutParams.height = sizeImage.toInt()
+                        imageViewPlayerGo.layoutParams.width = sizeImage.toInt()
+
+                        np++
+
+                        Handler().postDelayed({
+                            imageViewPlayerGo.visibility = View.INVISIBLE
+                            playerGo()
+                        }, 120)
+                    }
+
+                    if (cubeNumber > 0) {
+
+                        when(np) {
+                            4 -> {
+                                goRun()
+                                np = 0
+                            }
+                            5 -> {
+                                goRun()
+                                np = 0
+                            }
+                            else -> goRun()
+
+                        }
+                        //THIS CODE CLEAR
+
+                        //
+                    }
+                    else if (cubeNumber == 0) {
+                        if (this.whoPlay == 1) {
+                            this.menu = true
+                        }
+                        playerRun()
+
+                    }
+                }
+
+                fun playerStay() {
+
+                    playerScoreView.text = this.playerScore
+                    compScoreView.text = this.compScore
+
+                    fun goStay() {
+
+                        val imageViewPlayerStay = ImageView(this)
+
+                        when(whoPlay) {
+                            1 -> imageViewPlayerStay.setImageResource(playerStayArray[npr])
+                            2 -> imageViewPlayerStay.setImageResource(compStayArray[npr])
+                        }
+
+                        playerLayout.addView(imageViewPlayerStay)
+                        imageViewPlayerStay.visibility = View.VISIBLE
+                        //ustalenie miejsca pojawienia się grafiki
+                        imageViewPlayerStay.x = widthPlayer
+                        imageViewPlayerStay.y = heightPlayer
+                        //ustalenie rozmiaru importowanej grafiki
+                        imageViewPlayerStay.layoutParams.height = sizeImage.toInt()
+                        imageViewPlayerStay.layoutParams.width = sizeImage.toInt()
+
+                        npr++
+
+                        Handler().postDelayed({
+                            imageViewPlayerStay.visibility = View.INVISIBLE
+                            playerStay()
+                        }, 500)
+                    }
+
+                    if (cubeNumber > 0) {
+                        playerGo()
+                    }
+
+                    else if (cubeNumber == 0) {
+                        if (npr < 5) {
+                            goStay()
+                        }
+                        else if (npr == 5) {
+                            npr = 0
+                            when(whoPlay) {
+                                1 -> menu()
+                                2 -> compBrain()
+                            }
+                            goStay()
+                        }
+                    }
+                }
+
+                if (cubeNumber > 0) {
+                    playerGo()
+                }
+                else if (cubeNumber == 0) {
+                    npr = 0
+                    playerStay()
+                }
+            }
+
+            playerRun()
+
+            //FUNKCJE BUDYNKÓW
+            //funkcja tworząca budynki
+            fun buildingImageCreation() {
+                //funkcja wczytujaca odpowiednie grafiki do pól
+                val imageViewBulding1= ImageView(this)
+                val imageViewBulding2= ImageView(this)
+
+                //ustalenie pozycji wysokości dla budynku
+                val heightBuilding = (Resources.getSystem().displayMetrics.heightPixels.toFloat() - widthMax)
+                //ustalenie pozycji animowanego budynku
+                val widthBuilding = newWidth.toFloat()
+                //ustalenie pozycji następneg o budynku podczas animacji
+                val widthBuilding2 = (newWidth + widthMax).toFloat()
+                //ustalenie o ile ma się przesówać budynek podczas animacj
+                val minusWidth = widthMax / 15
+
+                //wyznaczenie na jakim polu jest gracz
+                val bn:Int = wherPlayerNow
+                //wyznaczenie następnego pola w kolejce do wyświetlenia
+                var bnn = 0
+                if (wherPlayerNow < 20) {
+                    bnn = bn + 1
+                }
+                else if(wherPlayerNow == 20) {
+                    bnn = 0
+                }
+
+                fun buldingRunNow() {
+
+                    //obecny budynek
+                    imageViewBulding1.setImageResource(buildingArray[bn])
+                    buildingLayout1.addView(imageViewBulding1)
+
+                    imageViewBulding1.visibility = View.VISIBLE
+                    //ustalenie miejsca pojawienia się grafiki
+                    imageViewBulding1.x = widthBuilding
+                    imageViewBulding1.y = heightBuilding
+                    //ustalenie rozmiaru importowanej grafiki
+                    imageViewBulding1.layoutParams.height = widthMax
+                    imageViewBulding1.layoutParams.width = widthMax
+
+                    //następny budynek
+                    imageViewBulding2.setImageResource(buildingArray[bnn])
+                    buildingLayout2.addView(imageViewBulding2)
+
+                    imageViewBulding2.visibility = View.VISIBLE
+                    //ustalenie miejsca pojawienia się grafiki
+                    imageViewBulding2.x = widthBuilding2
+                    imageViewBulding2.y = heightBuilding
+                    //ustalenie rozmiaru importowanej grafiki
+                    imageViewBulding2.layoutParams.height = widthMax
+                    imageViewBulding2.layoutParams.width = widthMax
+                    //ustalenie nowej pozycji budynku
+                    this.newWidth -= minusWidth
+                    //do zmiany pola (od 15)
+                    this.endArea -= 1
+
+                    if (this.endArea == 0) {
+                        this.cubeNumber -= 1
+                        if (this.wherPlayerNow < 20) {
+                            this.wherPlayerNow++
+                        }
+                        else if (this.wherPlayerNow == 20) {
+                            bank()
+                            playerScoreView.text = this.playerScore
+                            compScoreView.text = this.compScore
+                            this.wherPlayerNow -= 20
+                        }
+
+                        val newNumber: String = this.cubeNumber.toString()
+                        cubeNumberView.text = newNumber
+                        this.newWidth = 0
+                        this.endArea = 15
+
+                    }
+
+                    Handler().postDelayed({
+                        imageViewBulding1.visibility = View.INVISIBLE
+                        imageViewBulding2.visibility = View.INVISIBLE
+                        buildingImageCreation()
+                    }, 240)
+                }
+
+                fun buldingStayNow() {
+
+                    //nastepny budynek
+                    imageViewBulding2.setImageResource(buildingArray[bnn])
+                    buildingLayout2.addView(imageViewBulding2)
+                    //imageView.visibility = visible
+                    imageViewBulding2.visibility = View.VISIBLE
+                    //ustalenie miejsca pojawienia się grafiki
+                    imageViewBulding2.x = widthMax.toFloat()
+                    imageViewBulding2.y = heightBuilding
+                    //ustalenie rozmiaru importowanej grafiki
+                    imageViewBulding2.layoutParams.height = widthMax
+                    imageViewBulding2.layoutParams.width = widthMax
+
+                    //obecny budynek
+                    imageViewBulding1.setImageResource(buildingArray[bn])
+                    buildingLayout1.addView(imageViewBulding1)
+                    //imageView.visibility = visible
+                    imageViewBulding1.visibility = View.VISIBLE
+                    //ustalenie miejsca pojawienia się grafiki
+                    imageViewBulding1.x = 0F
+                    imageViewBulding1.y = heightBuilding
+                    //ustalenie rozmiaru importowanej grafiki
+                    imageViewBulding1.layoutParams.height = widthMax
+                    imageViewBulding1.layoutParams.width = widthMax
+
+                    Handler().postDelayed({
+                        imageViewBulding1.visibility = View.INVISIBLE
+                        imageViewBulding2.visibility = View.INVISIBLE
+                        buildingImageCreation()
+                    }, 1)
+                }
+
+                if (cubeNumber > 0) {
+                    buldingRunNow()
+                }
+                else if (cubeNumber == 0) {
+                    buldingStayNow()
+                }
+            }
+            if (play) {
+                buildingImageCreation()
+            }
+        }
+        //KONIEC FUNKCJI GRY
+        gameRun(true)
+
+        //funkcja zakończenia gry
+        fun gameOver() {
+            val newGameButtonClick = findViewById<ImageButton>(R.id.newGameButton)
+
+            //ustalenie wartości firm graczy
+            val ps: Int = playerScore.toInt()
+            val cs: Int = compScore.toInt()
+            allValue = player.value + ps
+            compValue = comp.value + cs
+            //ustalenie czy przegrał player
+            if (allValue < 0 && compValue < 0) {
+                endGameView.visibility = View.VISIBLE
+                lostView.visibility = View.VISIBLE
+                endTrashView.visibility = View.VISIBLE
+            }
+            //ustalenie czy przegrał player
+            if (allValue < 0) {
+                endGameView.visibility = View.VISIBLE
+                lostView.visibility = View.VISIBLE
+                endTrashView.visibility = View.VISIBLE
+            }
+            //ustalenie czy przegrał comp
+            else if (compValue < 0) {
+                cashAcmeView.text = allValue.toString()
+
+                endGameView.visibility = View.VISIBLE
+                cashAcmeView.visibility = View.VISIBLE
+
+                winView.visibility = View.VISIBLE
+                endCashView.visibility = View.VISIBLE
+                acmeValueView.visibility = View.VISIBLE
+            }
+            //reset ustawień po wciśnięciu przycisku nowa gra
+            newGameButtonClick.setOnClickListener {
+                this.cubeUnlock = true
+                this.cubeNumber = 0
+                this.viewCubeNumber = "0"
+                this.menu = false
+                this.whoPlay = 1
+                this.wherPlayer[1] = 0
+                this.wherPlayer[2] = 0
+                this.wherPlayerNow = 0
+                this.player.cash = 1000
+                this.comp.cash = 1000
+                this.player.value = 0
+                this.comp.value = 0
+                this.playerScore = 1000.toString()
+                this.compScore = 1000.toString()
+                var n = 0
+                while (n < 21) {
+                    this.buildings[n].value = 100
+                    n++
+                }
+                var m = 1
+                while (m < 21) {
+                    this.buildings[m].owner = 0
+                    m++
+                    when(m) {
+                        20 -> whatBuildingNow()
+                    }
+                }
+                var l = 0
+                while (l < 21) {
+                    this.buildings[l].level = 0
+                    l++
+                }
+
+                playerScoreView.text = this.playerScore
+                compScoreView.text = this.compScore
+                endGameView.visibility = View.INVISIBLE
+                winView.visibility = View.INVISIBLE
+                endCashView.visibility = View.INVISIBLE
+                acmeValueView.visibility = View.INVISIBLE
+                lostView.visibility = View.INVISIBLE
+                endTrashView.visibility = View.INVISIBLE
+                buyButtonClick.visibility = View.INVISIBLE
+                buyButtonView.visibility = View.INVISIBLE
+                nextButtonClick.visibility = View.INVISIBLE
+                nextButtonView.visibility = View.INVISIBLE
+                saleButtonClick.visibility = View.INVISIBLE
+                saleButtonView.visibility = View.INVISIBLE
+                buildButtonClick.visibility = View.INVISIBLE
+                buildButtonView.visibility = View.INVISIBLE
+                payButtonClick.visibility = View.INVISIBLE
+                payButtonView.visibility = View.INVISIBLE
+            }
+        }
+
+        //FUNKCJE PAMIECI
+        //funkcja wczytująca zmienne z pliku pamięci
+        fun memoryGet() {
+            val prop = Properties()
+            val dataFile = File(applicationContext.filesDir, "memory.txt")
+            val fis = FileInputStream(dataFile)
+            prop.load(fis)
+
+            player.cash = (prop["playerCash"].toString()).toInt()
+            comp.cash = (prop["compCash"].toString()).toInt()
+            player.value = (prop["playerValue"].toString()).toInt()
+            comp.value = (prop["compValue"].toString()).toInt()
+            playerScore = player.cash.toString()
+            compScore = comp.cash.toString()
+
+            var n = 0
+            while (n < 21) {
+                this.buildings[n].owner = (prop["buildingOwner$n"].toString()).toInt()
+                n++
+            }
+            var m = 0
+            while (m < 21) {
+                this.buildings[m].value = (prop["buildingValue$m"].toString()).toInt()
+                m++
+            }
+            var l = 0
+            while (l < 21) {
+                this.buildings[l].level = (prop["buildingLevel$l"].toString()).toInt()
+                l++
+            }
+            whatBuildingNow()
+        }
+        //funkcja zapisująca zmienne w pliku pamięci
+        fun memoryPost() {
+            File(applicationContext.filesDir, "memory.txt").printWriter().use{ out ->
+                out.println("whoPlay=$whoPlay")
+                out.println("wherPlayer=" + wherPlayer[1])
+                out.println("playerCash=" + player.cash)
+                out.println("compCash=" + comp.cash)
+                out.println("playerValue=" + player.value)
+                out.println("compValue=" + comp.value)
+                var n = 0
+                while (n < 21) {
+                    out.println("buildingValue$n=" + this.buildings[n].value)
+                    n++
+                }
+                var m = 0
+                while (m < 21) {
+                    out.println("buildingOwner$m=" + this.buildings[m].owner)
+                    m++
+                }
+                var l = 0
+                while (l < 21) {
+                    out.println("buildingLevel$l=" + this.buildings[l].level)
+                    l++
+                }
+            }
+        }
+        //funkcja sprawdzająca czy jest zapisany plik pamięci, by go wgrać
+        fun memoryControlFile() {
+            //sprawdza czy istnieje plik pamięci
+            val fileExists = File(applicationContext.filesDir, "memory.txt").exists()
+            if(fileExists){
+                memoryGet()
+            }
+        }
+        memoryControlFile()
+        //FUNKCJE PRZYCISKÓW
+        cubeButtonClick.setOnClickListener {
+            if(cubeUnlock) {
+                nextButtonClick.visibility = View.INVISIBLE
+                nextButtonView.visibility = View.INVISIBLE
+                cube()
+                gameOver()
+                cubeNumberView.text = this.viewCubeNumber
+            }
+
+            memoryPost()
+        }
+        playButtonClick.setOnClickListener {
+            playButtonClick.visibility = View.INVISIBLE
+            playButtonView.visibility = View.INVISIBLE
+            playLayout.visibility = View.INVISIBLE
+        }
+        facebookButtonClick.setOnClickListener {
+            val i = Intent(Intent.ACTION_VIEW, Uri.parse("https://pl-pl.facebook.com/LordOfMoney"))
+            startActivity(i)
+        }
+        youtubeButtonClick.setOnClickListener {
+            val i = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=9_x_chEr4G8&list=PL1auLjjXHHJ-B1THsACbCMtX2e4gdl-7S"))
+            startActivity(i)
+        }
+        privacyPolicyClick.setOnClickListener {
+            val i = Intent(Intent.ACTION_VIEW, Uri.parse("http://www.lordofmoney.prv.pl/privacypolicy.htm"))
+            startActivity(i)
+        }
+    }
+    //FUNKCJE GRY
+    init {
+        this.buildingCreation()
+    }
+    //funkcja zmiany wartości konta
+    private fun cashValue(who: Int, how: Int) {
+        //sprawdzenie który gracz
+        if (who == 1) {
+            //zmiana stanu konta gracza
+            this.player.cash += how
+        } else if (who == 2) {
+            this.comp.cash += how
+        }
+        //zmiana stanu konta gracza w textview
+        this.playerScore = this.player.cash.toString()
+        this.compScore = this.comp.cash.toString()
+    }
+    //funkcja aktualizyjąca wartość firmy gracza
+    private fun valuePlus (newValue: Int) {
+        val vpn: Int = whoPlay
+        if (vpn == 1) {
+            this.player.value += newValue
+        }
+        else if (vpn== 2) {
+            this.comp.value += newValue
+        }
+    }
+
+    //funkcja rzutu kostką
+    private fun cube() {
+        if (this.cubeUnlock) {
+            //pobranie aktualnej pozycji gracza
+            this.wherPlayerNow = this.wherPlayer[this.whoPlay]
+            //losowanie liczby do 6
+            val returnCube = Random.nextInt(1, 6)
+            //blokada rzutu kostką
+            this.cubeUnlock = false
+            this.cubeNumber = returnCube
+            //zmiana cyfry w texview
+            this.viewCubeNumber = returnCube.toString()
+            //przydzielenia pozycji gracza na planszy
+            playerWher()
+
+            cubeAll++
+
+        }
+    }
+
+    //funkcja tworząca numery posesji
+    private fun buildingCreation() {
+        var bcn = 1
+        //tworzenie 20 pol gry
+        while (bcn < 20) {
+            this.buildings[bcn].number = bcn
+            bcn++
+        }
+    }
+
+    //funkcja kupująca działkę
+    private fun buyArea() {
+        if (!this.cubeUnlock && this.cubeNumber == 0) {
+            //pobieranie na którym polu znajduje się gracz
+            val banr: Int = this.wherPlayer[this.whoPlay]
+            //sprawdzanie czy pole jest wolne
+            when(this.buildings[banr].owner) {
+                0 -> {
+                    // pobieranie wartości nieruchomości
+                    val cost: Int = this.buildings[banr].value
+                    //pobieranie id gracza
+                    val n = this.whoPlay
+                    //przydzielanie pola do gracza
+                    this.buildings[banr].owner = n
+                    //pobranie nalerzności za pole z konta gracza
+                    cashValue(this.whoPlay, -cost)
+                    valuePlus(cost)
+                    whatBuildingNow()
+                    nextPlayer()
+                }
+            }
+        }
+    }
+
+    //funkcja budująca piętra
+    private fun buildLevel() {
+        if (!this.cubeUnlock && this.cubeNumber == 0) {
+            //pobieranie na jakim polu znajduje się gracz
+            val bnr: Int = this.wherPlayer[this.whoPlay]
+            //sprawdzanie czy pole nalerzy do gracza
+            when(this.buildings[bnr].owner) {
+                this.whoPlay -> {
+                    when(this.buildings[bnr].level) {
+                        0 -> {
+                            //budowa pierwszego piętra
+                            this.buildings[bnr].level = 1
+                            this.buildings[bnr].value += 50
+                            cashValue(this.whoPlay, -50)
+                            valuePlus(50)
+                            whatBuildingNow()
+                            nextPlayer()
+                        }
+                        1 -> {
+                            //budowa drugiego piętra
+                            this.buildings[bnr].level = 2
+                            this.buildings[bnr].value += 50
+                            cashValue(this.whoPlay, -50)
+                            valuePlus(50)
+                            whatBuildingNow()
+                            nextPlayer()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //funkcja zapłaty za pobyt
+    private fun pay() {
+        if (!this.cubeUnlock && this.cubeNumber == 0) {
+            //sprawdzanie na którym polu jest gracz
+            val pnr: Int = this.wherPlayer[this.whoPlay]
+            //ustalenie opłaty za pobyt
+            val how = 10
+            //ustalenie który gracz płaci
+            val who: Int = this.whoPlay
+            //ustalenie który gracz zarabia
+            val where: Int = this.buildings[pnr].owner
+
+            //ustalenie czy to nie pole gracza i czy jest budynek
+            if (this.buildings[pnr].owner != this.whoPlay && this.buildings[pnr].level == 0) {
+                //ustalenie kwoty obciążenia
+                val minus: Int = (-1 * how)
+                //ustalenie kwoty należności
+                val plus: Int = how
+                //odjęcie ze stanu konta gracza
+                cashValue(who, minus)
+                //dodanie do stanu konta właściciela pola
+                cashValue(where, plus)
+                nextPlayerAfterPay()
+            }
+            else if (this.buildings[pnr].owner != this.whoPlay && this.buildings[pnr].level == 1) {
+                //ustalenie kwoty obciążenia
+                val minus: Int = ((-1 * how) * 3)
+                //ustalenie kwoty należności
+                val plus: Int = (how * 3)
+                //odjęcie ze stanu konta gracza
+                cashValue(who, minus)
+                //dodanie do stanu konta właściciela pola
+                cashValue(where, plus)
+                this.buildings[pnr].value += 1
+                nextPlayerAfterPay()
+            }
+            else if (this.buildings[pnr].owner != this.whoPlay && this.buildings[pnr].level == 2) {
+                //ustalenie kwoty obciążenia
+                val minus: Int = ((-1 * how) * 5)
+                //ustalenie kwoty należności
+                val plus: Int = (how * 5)
+                //odjęcie ze stanu konta gracza
+                cashValue(who, minus)
+                //dodanie do stanu konta właściciela pola
+                cashValue(where, plus)
+                this.buildings[pnr].value += 5
+                nextPlayerAfterPay()
+            }
+        }
+    }
+
+    //funkcja zmieniająca gracza
+    private fun nextPlayer() {
+        //jeśli kostka jest zablokowana
+        if (!this.cubeUnlock && this.cubeNumber == 0) {
+            //ustalenie czy gra gracz
+            if (this.whoPlay == 1 && this.buildings[this.wherPlayer[this.whoPlay]].owner != 2) {
+                this.whoPlay = 2
+                //odblokowanie możliwości rzutu kostką
+                this.cubeUnlock = true
+                cube()
+            }
+            //ustalenie czy gra komputer
+            else if (this.whoPlay == 2 && this.buildings[this.wherPlayer[this.whoPlay]].owner != 1) {
+                this.whoPlay = 1
+                //odblokowanie możliwości rzutu kostką
+                this.cubeUnlock = true
+                this.wherPlayerNow = wherPlayer[whoPlay]
+                whatBuildingNow()
+            }
+        }
+    }
+    //funkcja zmiany gracza po zapłacie
+    private fun nextPlayerAfterPay() {
+        //jeśli kostka jest zablokowana
+        if (!this.cubeUnlock && this.cubeNumber == 0) {
+            //ustalenie czy gra gracz
+            when(this.whoPlay) {
+                1 -> {
+                    this.whoPlay = 2
+                    //odblokowanie możliwości rzutu kostką
+                    this.cubeUnlock = true
+                    cube()
+                }
+                2 -> {
+                    this.whoPlay = 1
+                    //odblokowanie możliwości rzutu kostką
+                    this.cubeUnlock = true
+                    this.wherPlayerNow = wherPlayer[whoPlay]
+                    whatBuildingNow()
+                }
+            }
+        }
+    }
+
+    //funkcja sprzedaży nieruchomości
+    private fun sale() {
+        if (!this.cubeUnlock && this.cubeNumber == 0) {
+            //ustalenie kto gra
+            val ns: Int = this.whoPlay
+            //ustalenie na jakim polu jest gracz
+            val nr: Int = this.wherPlayer[ns]
+            //ustalenie kwoty sprzedaży na podstawie wartości pola
+            val plus: Int = this.buildings[nr].value
+            //ustalenie czy pole należy do gracza
+            if (this.buildings[nr].owner == this.whoPlay) {
+                //uruchomienie funkcji zapłaty za pole
+                cashValue(ns, plus)
+                val np:Int = plus * -1
+                valuePlus(np)
+                this.buildings[nr].owner = 0
+                this.buildings[nr].level = 0
+                this.buildings[nr].value = 100
+                whatBuildingNow()
+                nextPlayer()
+            }
+        }
+    }
+
+    //funkcja lokująca gracza
+    private fun playerWher() {
+        //ustalenie kto gra
+        val kg: Int = this.whoPlay
+        //ustalenie o ile przesunie się gracz
+        val plus: Int = this.cubeNumber
+        //ustalenie nowe pozycji gracza
+        val nowArea: Int = this.wherPlayer[kg] + plus
+        this.wherPlayer[kg] = nowArea
+        //korekta pozycji gracza na planszy
+        if (this.wherPlayer[kg] > 20) {
+            this.wherPlayer[kg] -= 21
+        }
+    }
+    //funkcja naliczania procentów od stanu konta
+    private fun bank() {
+        if (this.whoPlay == 1) {
+            val konto = this.player.cash
+            if (konto > 0) {
+                //zwienkszenie stanu konta o 5%
+               this. player.cash = ((konto * 5) / 100) + konto
+            }
+            else if (konto < 0) {
+                //zmniejszenie stanu konta o 25%
+                this.player.cash = konto + ((konto * 20) / 100)
+            }
+        }
+        else if (this.whoPlay == 2) {
+            val konto = this.comp.cash
+            if (konto > 0) {
+                this.comp.cash = ((konto * 5) / 100) + konto
+            }
+            else if (konto < 0) {
+                this.comp.cash = konto + ((konto * 20) / 100)
+            }
+        }
+        this.playerScore = this.player.cash.toString()
+        this.compScore = this.comp.cash.toString()
+
+    }
+
+    //funkcja scenariuszu gry komputera
+    private fun compBrain() {
+        //ustalenie pozycji komputera
+        val pk: Int = this.wherPlayer[this.whoPlay]
+       this.menu = false
+        //sprawdzenie czy gra komputer
+        if (this.whoPlay == 2) {
+            //sprawdzenie czy teren jest wolny
+            if (this.buildings[pk].owner == 0) {
+                //kupno ziemi
+                buyArea()
+            }
+            //sprawdzenie czy teren należy do komputera i budowa budynku
+            else if (this.buildings[pk].owner == 2 && this.buildings[pk].level < 2 && this.comp.cash > 0) {
+                buildLevel()
+                }
+            //sprawdzanie stanu konta komputera i sprzedaż budynku
+            else if (this.buildings[pk].owner == 2 && this.buildings[pk].level < 2 && this.comp.cash < 1) {
+                //sprzedaż nieruchomości
+                sale()
+                }
+            else if (this.buildings[pk].owner == 2 && this.buildings[pk].level == 2 && this.comp.cash < -200) {
+                //sprzedaż nieruchomości
+                sale()
+            }
+            else if (this.buildings[pk].owner == 2 && this.buildings[pk].level == 2) {
+                nextPlayer()
+            }
+            else if (this.buildings[pk].owner == 1) {
+                pay()
+            }
+            else if (this.buildings[pk].owner == 3) {
+                //bank()
+                nextPlayer()
+            }
+        }
+    }
+    //funkcja aktualizcji budynków
+    private fun whatBuildingNow() {
+        var nb = 0
+
+        while (nb < 21) {
+            when(this.buildings[nb].owner) {
+                0 -> this.buildingArray[nb] = R.drawable.building0 //grafika pola na sprzedaż
+                1 -> {
+                    when(this.buildings[nb].level) {
+                        0 -> this.buildingArray[nb] = R.drawable.building1 //grafika pola pierwszego gracza
+                        1 -> this.buildingArray[nb] = R.drawable.building11 //grafika budynku z 1 pientrem
+                        2 -> this.buildingArray[nb] = R.drawable.building12 //grafika budynku z 2 pietrami
+                    }
+                }
+                2 -> {
+                    when(this.buildings[nb].level) {
+                        0 -> this.buildingArray[nb] = R.drawable.building2 //grafika pola pierwszego gracza
+                        1 -> this.buildingArray[nb] = R.drawable.building21 //grafika budynku z 1 pientrem
+                        2 -> this.buildingArray[nb] = R.drawable.building22 //grafika budynku z 2 pietrami
+                    }
+                }
+            }
+            nb++
+        }
+    }
+}
